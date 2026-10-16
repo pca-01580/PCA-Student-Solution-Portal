@@ -11,3 +11,28 @@
 .login-page,.setup-page{min-height:100vh;display:grid;place-items:center;padding:25px;position:relative;overflow:hidden;background:#f3f7f2}.login-decoration{position:absolute;border-radius:50%;pointer-events:none}.decor-one{width:430px;height:430px;background:#e0eee2;top:-170px;right:-100px}.decor-two{width:350px;height:350px;background:#fff0b8;bottom:-170px;left:-120px}.login-card{width:min(100%,465px);background:white;border:1px solid #e0e8e0;border-radius:22px;padding:34px;position:relative;box-shadow:0 20px 70px #183d2410}.login-logo{width:58px;height:58px;background:var(--green);color:var(--yellow);display:grid;place-items:center;border-radius:17px;margin-bottom:22px}.login-card h1{font-size:27px;line-height:1.25;margin:0 0 8px;color:#17281d}.login-card>.muted{line-height:1.6}.login-form{display:grid;gap:17px;margin-top:25px}.login-form input{width:100%;border:1px solid #dbe5dc;border-radius:10px;padding:12px 13px;background:#fcfdfc}.login-form label small{font-weight:400;color:var(--muted)}.login-form .primary-button{width:100%;margin-top:2px;padding:13px}.login-note{display:flex;gap:8px;align-items:flex-start;border-top:1px solid #edf1ed;margin-top:23px;padding-top:16px;font-size:12px;color:#708075;line-height:1.5}.login-note svg{flex-shrink:0;color:var(--green2)}.login-foot{position:absolute;bottom:8px;color:#7e8c80;font-size:11px}.setup-card ol{padding-left:22px;line-height:1.8;font-size:14px}.setup-card code{background:#f0f4f0;border-radius:4px;padding:2px 4px;font-size:12px}.center-screen{min-height:100vh;display:grid;place-content:center;justify-items:center;color:var(--muted)}.spinner{width:28px;height:28px;border:3px solid #dfe8df;border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:800px){.main-content{padding:24px 15px}.workspace{grid-template-columns:1fr}.sidebar{position:static}.subject-grid{gap:10px}.subject-card{padding:13px;gap:10px}.subject-card small{display:none}.subject-icon{width:40px;height:40px}.welcome-row h1{font-size:25px}.content-panel{padding:17px}.topbar{padding:0 15px}.brand-copy strong{font-size:12px}.brand-copy span{font-size:9px}.id-pill{display:none}}
 @media(max-width:480px){.subject-grid{grid-template-columns:1fr}.welcome-icon{width:48px;height:48px}.welcome-row h1{font-size:23px}.content-title-row h2{font-size:20px}.result-count{white-space:nowrap}.login-card{padding:25px 21px}.login-card h1{font-size:24px}.topbar{height:68px}.brand-mark{width:38px;height:38px}.brand-copy strong{font-size:10px}.brand-copy span{font-size:8px}.admin-pill{font-size:10px;padding:5px 7px}}
+/* টপবারের লোগো সাইজ ও স্টাইল */
+.app-logo {
+  height: 42px;
+  width: auto;
+  border-radius: 6px;
+  object-fit: contain;
+}
+
+/* লগইন পেজের মূল লোগো স্টাইল */
+.login-main-logo {
+  max-width: 260px;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  margin-bottom: 12px;
+  object-fit: contain;
+}
+
+.login-logo-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 8px;
+}
