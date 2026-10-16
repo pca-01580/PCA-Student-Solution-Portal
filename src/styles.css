@@ -36,3 +36,65 @@
   align-items: center;
   margin-bottom: 8px;
 }
+/* চন্দ্রাবতী ফন্ট ইম্পোর্ট ও তৈরি */
+@import url('https://fonts.googleapis.com/css2?family=Atma:wght@600;700&family=Kalpurush&display=swap');
+
+@font-face {
+  font-family: 'Chandrabati';
+  src: url('/fonts/Chandrabati.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* চন্দ্রাবতী ব্র্যান্ডিং ক্লাসের নিয়ম */
+.chandrabati-title, .chandrabati-login-title {
+  font-family: 'Chandrabati', 'Atma', 'Kalpurush', sans-serif;
+  font-size: 1.45rem;
+  font-weight: bold;
+  color: #0f172a;
+}
+
+.chandrabati-login-title {
+  font-size: 1.8rem;
+  margin-top: 8px;
+  margin-bottom: 2px;
+}
+
+.english-with {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 500;
+  font-size: 0.85em;
+  color: #0d9488;
+}
+
+/* লোগো কনটেইনার */
+.app-logo {
+  height: 38px;
+  width: auto;
+  object-fit: contain;
+}
+
+.login-main-logo {
+  height: 64px;
+  width: auto;
+  margin-bottom: 8px;
+  object-fit: contain;
+}
+
+.class-select-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background-color: #f8fafc;
+  color: #1e293b;
+  margin-top: 4px;
+  outline: none;
+}
+
+.class-select-input:focus {
+  border-color: #0d9488;
+  background-color: #ffffff;
+}
