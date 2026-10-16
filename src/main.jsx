@@ -100,8 +100,6 @@ function App() {
 const email = studentId === '2609000'
   ? 'classroompca2@gmail.com'
   : `${studentId}@students.pca.invalid`;
-  ? 'classroompca2@gmail.com'
-  : `${studentId}@students.pca.invalid`;
     const { error: e2 } = await supabase.auth.signInWithPassword({ email, password });
     if (e2) setError('আইডি বা পাসওয়ার্ড সঠিক নয়, অথবা অ্যাকাউন্ট সক্রিয় নয়।');
   }
