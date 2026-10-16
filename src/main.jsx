@@ -477,13 +477,45 @@ function SetupScreen() {
   return <div className="center-screen"><div className="login-glass-card"><h1>Supabase সংযোগ বাকি</h1></div></div>;
 }
 
-function SolutionView({solution,onBack,admin,onStatus}) {
-  useEffect(() => {
-    if (window.MathJax && window.MathJax.typesetPromise) {
-      window.MathJax.typesetPromise();
-    }
-  }, [solution]);
+function SolutionView   useEffect(() => {
+    let cancelled = false;
 
+    async function renderMath() {
+      try {
+        const startedAt = Date.now();
+
+        // MathJax লোড হওয়া পর্যন্ত সর্বোচ্চ ১৫ সেকেন্ড অপেক্ষা
+        while (
+          !window.MathJax?.typesetPromise &&
+          Date.now() - startedAt < 15000
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        if (cancelled || !window.MathJax?.typesetPromise) {
+          console.error('MathJax load failed.');
+          return;
+        }
+
+        // MathJax পুরোপুরি প্রস্তুত হওয়ার অপেক্ষা
+        if (window.MathJax.startup?.promise) {
+          await window.MathJax.startup.promise;
+        }
+
+        if (!cancelled) {
+          await window.MathJax.typesetPromise();
+        }
+      } catch (error) {
+        console.error('MathJax rendering error:', error);
+      }
+    }
+
+    renderMath();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [solution]);
   return (
     <div className="solution-full-view">
       <button className="btn-back-link" onClick={onBack}><ArrowLeft size={18}/> সমাধান তালিকায় ফিরুন</button>
