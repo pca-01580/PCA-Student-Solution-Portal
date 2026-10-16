@@ -60,31 +60,30 @@ function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
- async function loadProfile(uid) {
-  const { data, error: e } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', uid)
-    .maybeSingle();
+  async function loadProfile(uid) {
+    const { data, error: e } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', uid)
+      .maybeSingle();
 
-  // ডাটাবেস বা RLS পলিসির আসল ত্রুটি দেখালে এখানে আটকে যাবে এবং সঠিক মেসেজ দেখাবে
-  if (e) {
-    console.error('Supabase Profile Error:', e);
-    setError(`ডাটাবেস ত্রুটি (${e.code || ''}): ${e.message}`);
+    if (e) {
+      console.error('Supabase Profile Error:', e);
+      setError(`ডাটাবেস ত্রুটি (${e.code || ''}): ${e.message}`);
+      setLoading(false);
+      return;
+    }
+
+    if (!data || !data.active) {
+      setProfile(null);
+      setError('এই অ্যাকাউন্টের সক্রিয় প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করো।');
+    } else {
+      setProfile(data);
+      setError('');
+      await loadContent();
+    }
     setLoading(false);
-    return;
   }
-
-  if (!data || !data.active) {
-    setProfile(null);
-    setError('এই অ্যাকাউন্টের সক্রিয় প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করো।');
-  } else {
-    setProfile(data);
-    setError('');
-    await loadContent();
-  }
-  setLoading(false);
-}
 
   async function loadContent() {
     const [c, t, s] = await Promise.all([
@@ -106,11 +105,10 @@ function App() {
     if (!/^2609\d{3}$/.test(studentId)) {
       setError('সঠিক ৭ ডিজিটের Student ID দাও। ID অবশ্যই 2609 দিয়ে শুরু হবে।'); return;
     }
-    if (!supabase) { setError('Supabase সেটআপ করা হয়নি। README.md অনুসরণ করে .env ফাইল পূরণ করো।'); return; }
-    // Student IDs map to synthetic auth emails. Public sign-up must remain disabled.
-const email = studentId === '2609000'
-  ? 'classroompca2@gmail.com'
-  : `${studentId}@students.pca.invalid`;
+    if (!supabase) { setError('Supabase সেটআপ করা হয়নি। .env ফাইল পূরণ করো।'); return; }
+    const email = studentId === '2609000'
+      ? 'classroompca2@gmail.com'
+      : `${studentId}@students.pca.invalid`;
     const { error: e2 } = await supabase.auth.signInWithPassword({ email, password });
     if (e2) setError('আইডি বা পাসওয়ার্ড সঠিক নয়, অথবা অ্যাকাউন্ট সক্রিয় নয়।');
   }
@@ -272,10 +270,17 @@ function LoginScreen({studentId,setStudentId,password,setPassword,login,error}) 
 }
 
 function SetupScreen() {
-  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1><p>ওয়েবসাইট চালু করতে প্রজেক্টের URL ও publishable/anon key সেট করতে হবে।</p><ol><li>README.md অনুসারে Supabase project তৈরি করো।</li><li>প্রজেক্টের SQL Editor-এ <code>supabase/schema.sql</code> চালাও।</li><li><code>.env.example</code> কপি করে <code>.env</code> তৈরি করো এবং দুইটি মান বসাও।</li><li>তারপর <code>npm run dev</code> চালাও।</li></ol><div className="alert"><AlertCircle size={17}/>Service role key কখনো frontend-এ বসাবে না।</div></div></div>;
+  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1><p>ওয়েবসাইট চালু করতে প্রজেক্টের URL ও publishable/anon key সেট করতে হবে।</p><ol><li>Supabase project তৈরি করো।</li><li>প্রজেক্টের SQL Editor-এ <code>supabase/schema.sql</code> চালাও।</li><li><code>.env.example</code> কপি করে <code>.env</code> তৈরি করো এবং দুইটি মান বসাও।</li><li>তারপর <code>npm run dev</code> চালাও।</li></ol><div className="alert"><AlertCircle size={17}/>Service role key কখনো frontend-এ বসাবে না।</div></div></div>;
 }
 
 function SolutionView({solution,onBack,admin,onStatus}) {
+  // সলিউশন লোড বা পরিবর্তন হওয়ার সাথে সাথে MathJax সমীকরণগুলো সুন্দর করে ফরম্যাট করবে
+  useEffect(() => {
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise();
+    }
+  }, [solution]);
+
   return <div className="solution-view"><button className="back-button" onClick={onBack}><ArrowLeft size={17}/> সমাধানের তালিকায় ফিরুন</button>
     <div className="solution-view-heading"><span className="question-number large">{solution.question_number}</span><div><p className="eyebrow">STEP-BY-STEP SOLUTION</p><h2>{solution.title}</h2><p className="muted">{solution.topics?.title || 'টপিক নির্ধারণ করা হয়নি'}</p></div></div>
     {admin && <div className="admin-status-bar"><span>বর্তমান স্ট্যাটাস: <b>{solution.status}</b></span>{solution.status !== 'published' && <button className="small-button" onClick={()=>onStatus(solution,'published')}>Publish</button>}{solution.status === 'published' && <button className="small-button secondary" onClick={()=>onStatus(solution,'draft')}>Unpublish</button>}</div>}
