@@ -38,13 +38,13 @@ function getBengaliOrdinal(index) {
   return BENGALI_ORDINALS[index] || `${index + 1}তম`;
 }
 
+// অধ্যায়ের নাম থেকে যেকোনো প্রকার অতিরিক্ত প্রিফিক্স মুছে ফেলার ফাংশন
 function cleanChapterTitle(title) {
   if (!title) return '';
   return title
-    // "১ম অধ্যায়:", "ষষ্ঠ অধ্যায়:", "ম অধ্যায়:" ইত্যাদির মতো সব টেক্সট মুছে ফেলবে
-    .replace(/^([\d১-৯0-9a-zA-Zমষতম্থ্রর্ডন্সষ্ঠম]+\s*অধ্যায়\s*[:ঃ.-]?\s*)/i, '')
-    .replace(/^([০-৯0-9]+\s*[:ঃ.-]?\s*)/i, '')
-    .replace(/^[মষ]\s*অধ্যায়\s*[:ঃ.-]?\s*/i, '')
+    .replace(/^(?:[\d১-৯0-9a-zA-Zমষতম্থ্রর্ডন্সষ্ঠম]+\s*)?অধ্যায়\s*[:ঃ.-]?\s*/i, '')
+    .replace(/^[০-৯0-9]+\s*[:ঃ.-]?\s*/i, '')
+    .replace(/^[মষ]\s*/i, '')
     .replace(/^[:\sঃ.-]+/, '')
     .trim();
 }
@@ -288,18 +288,17 @@ function App() {
         {error && <div className="alert error"><AlertCircle size={18}/><span>{error}</span><button onClick={() => setError('')}><X size={16}/></button></div>}
         {notice && <div className="alert success"><CheckCircle2 size={18}/><span>{notice}</span><button onClick={() => setNotice('')}><X size={16}/></button></div>}
 
-        {/* বিষয় নির্বাচন (Physics / Chemistry) */}
+        {/* বিষয় নির্বাচন (Physics / Chemistry) - ক্লিন ও বড় ফন্টে */}
         <section className="subject-selector-grid">
           {SUBJECTS.map(s => (
             <button key={s} className={`subject-tab-card ${s === subject ? 'active-tab' : ''} ${s.toLowerCase()}`} onClick={() => {setSubject(s);setActiveChapter(null);setActiveTopic('all');setSelectedSolution(null);setQuery('');}}>
               <div className="subject-tab-icon">
-                {s === 'Physics' ? <Atom size={28}/> : <FlaskConical size={28}/>}
+                {s === 'Physics' ? <Atom size={32}/> : <FlaskConical size={32}/>}
               </div>
               <div className="subject-tab-info">
-                <strong>{bnSubject(s)}</strong>
-                <small>{s === 'Physics' ? 'পদার্থবিজ্ঞান গাণিতিক সমাধান' : 'রসায়ন বিক্রিয়া ও সমাধান'}</small>
+                <strong className="subject-title-lg">{bnSubject(s)}</strong>
               </div>
-              <ChevronRight className="subject-tab-arrow"/>
+              <ChevronRight className="subject-tab-arrow" size={24}/>
             </button>
           ))}
         </section>
