@@ -41,8 +41,11 @@ function getBengaliOrdinal(index) {
 function cleanChapterTitle(title) {
   if (!title) return '';
   return title
-    .replace(/^([\d১-৯a-zA-Z]+[মতম্থ্রর্ডন্সষ্ঠম]*\s*অধ্যায়\s*[:ঃ-]?\s*)/i, '')
+    // "১ম অধ্যায়:", "ষষ্ঠ অধ্যায়:", "ম অধ্যায়:" ইত্যাদির মতো সব টেক্সট মুছে ফেলবে
+    .replace(/^([\d১-৯0-9a-zA-Zমষতম্থ্রর্ডন্সষ্ঠম]+\s*অধ্যায়\s*[:ঃ.-]?\s*)/i, '')
     .replace(/^([০-৯0-9]+\s*[:ঃ.-]?\s*)/i, '')
+    .replace(/^[মষ]\s*অধ্যায়\s*[:ঃ.-]?\s*/i, '')
+    .replace(/^[:\sঃ.-]+/, '')
     .trim();
 }
 
