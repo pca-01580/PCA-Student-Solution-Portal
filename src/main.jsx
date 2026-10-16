@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import {
   Atom, FlaskConical, Search, LogOut, BookOpen, ShieldCheck, Upload,
   ChevronRight, ArrowLeft, CircleHelp, CheckCircle2, AlertCircle, Plus,
-  RefreshCw, FileText, Database, X
+  FileText, Database, X, GraduationCap
 } from 'lucide-react';
 import './styles.css';
 
@@ -18,6 +18,13 @@ const supabase = supabaseUrl && supabaseAnonKey
 const SUBJECTS = ['Physics', 'Chemistry'];
 const bnSubject = (s) => s === 'Physics' ? 'ফিজিক্স' : 'কেমিস্ট্রি';
 
+const PROGRAM_LABELS = {
+  '9': 'ক্লাস ৯',
+  '10': 'ক্লাস ১০ / SSC',
+  'hsc': 'HSC',
+  'admission': 'এডমিশন'
+};
+
 function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -26,6 +33,7 @@ function App() {
   const [notice, setNotice] = useState('');
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedClass, setSelectedClass] = useState('9'); // ডিফোল্ট ক্লাস ৯
   const [subject, setSubject] = useState('Physics');
   const [chapterList, setChapterList] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -87,9 +95,9 @@ function App() {
 
   async function loadContent() {
     const [c, t, s] = await Promise.all([
-      supabase.from('chapters').select('*').eq('class_level', '9').order('sort_order'),
+      supabase.from('chapters').select('*').order('sort_order'),
       supabase.from('topics').select('*').order('sort_order'),
-      supabase.from('solutions').select('*, topics(title), chapters(title,subject)').order('question_number')
+      supabase.from('solutions').select('*, topics(title), chapters(title,subject,class_level)').order('question_number')
     ]);
     if (c.error || t.error || s.error) {
       setError(c.error?.message || t.error?.message || s.error?.message || 'ডেটা লোড করা যায়নি।');
@@ -118,12 +126,13 @@ function App() {
     setSession(null); setProfile(null); setActiveChapter(null); setSelectedSolution(null);
   }
 
-  const visibleChapters = chapterList.filter(c => c.subject === subject);
+  // সিলেক্ট করা ক্লাসের উপর ভিত্তি করে ফিল্টারিং
+  const visibleChapters = chapterList.filter(c => c.subject === subject && (c.class_level === selectedClass || !c.class_level));
   const chapterTopics = topics.filter(t => t.chapter_id === activeChapter?.id);
   const visibleSolutions = useMemo(() => {
     let list = solutions.filter(s => s.status === 'published' || profile?.role === 'admin');
     if (activeChapter) list = list.filter(s => s.chapter_id === activeChapter.id);
-    else list = list.filter(s => s.chapters?.subject === subject);
+    else list = list.filter(s => s.chapters?.subject === subject && (s.chapters?.class_level === selectedClass || !s.chapters?.class_level));
     if (activeTopic !== 'all') list = list.filter(s => s.topic_id === activeTopic);
     const q = query.trim().toLocaleLowerCase();
     if (q) list = list.filter(s =>
@@ -132,13 +141,13 @@ function App() {
       (s.topics?.title || '').toLocaleLowerCase().includes(q)
     );
     return list;
-  }, [solutions, activeChapter, activeTopic, query, subject, profile]);
+  }, [solutions, activeChapter, activeTopic, query, subject, selectedClass, profile]);
 
   async function addChapter(e) {
     e.preventDefault(); setError(''); setNotice('');
     if (!newChapter.trim() || profile?.role !== 'admin') return;
     const { error: e1 } = await supabase.from('chapters').insert({
-      class_level: '9', subject, title: newChapter.trim(), sort_order: visibleChapters.length + 1
+      class_level: selectedClass, subject, title: newChapter.trim(), sort_order: visibleChapters.length + 1
     });
     if (e1) setError(e1.message);
     else { setNewChapter(''); setNotice('অধ্যায় যোগ হয়েছে।'); await loadContent(); }
@@ -165,7 +174,6 @@ function App() {
       for (const r of rows) {
         if (!Number.isInteger(Number(r.question_number)) || Number(r.question_number) < 1) throw new Error('প্রতিটি অঙ্কে positive question_number লাগবে।');
         if (!r.title || typeof r.solution_html !== 'string') throw new Error('প্রতিটি অঙ্কে title এবং solution_html থাকতে হবে।');
-        if (r.status && !['draft','published','missing'].includes(r.status)) throw new Error('status হবে draft, published অথবা missing।');
       }
     } catch (err) { setError(`Import করা যায়নি: ${err.message}`); return; }
     setImportBusy(true);
@@ -183,7 +191,7 @@ function App() {
     const { error: e1 } = await supabase.from('solutions').upsert(payload, { onConflict: 'chapter_id,question_number' });
     setImportBusy(false);
     if (e1) setError(`Import ব্যর্থ: ${e1.message}`);
-    else { setNotice(`${payload.length}টি অঙ্ক ${importStatus === 'draft' ? 'Draft হিসেবে' : 'Publish করে'} যোগ/আপডেট হয়েছে।`); await loadContent(); }
+    else { setNotice(`${payload.length}টি অঙ্ক যোগ/আপডেট হয়েছে।`); await loadContent(); }
   }
 
   async function setSolutionStatus(solution, status) {
@@ -194,13 +202,22 @@ function App() {
 
   if (!supabase) return <SetupScreen />;
   if (loading) return <div className="center-screen"><div className="spinner"/><p>লোড হচ্ছে…</p></div>;
-  if (!session || !profile) return <LoginScreen {...{studentId,setStudentId,password,setPassword,login,error}} />;
+  if (!session || !profile) {
+    return <LoginScreen {...{studentId,setStudentId,password,setPassword,selectedClass,setSelectedClass,login,error}} />;
+  }
 
   return (
     <div className="app-shell">
+      {/* টপবার / হেডার */}
       <header className="topbar">
-        <div className="brand-mark"><Atom size={25}/></div>
-        <div className="brand-copy"><strong>PHYSICS & CHEMISTRY</strong><span>WITH ANANDA · STUDENT PORTAL</span></div>
+        <div className="brand-mark">
+          <img src="/logo.png" alt="PCA Logo" className="app-logo" onError={(e)=>{e.target.style.display='none';}} />
+          <Atom size={28} className="fallback-logo-icon" />
+        </div>
+        <div className="brand-copy">
+          <strong className="chandrabati-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</strong>
+          <span>STUDENT PORTAL · {PROGRAM_LABELS[selectedClass]}</span>
+        </div>
         <div className="topbar-right">
           {profile.role === 'admin' && <span className="admin-pill"><ShieldCheck size={14}/> Admin</span>}
           <span className="id-pill">{profile.student_id}</span>
@@ -210,7 +227,11 @@ function App() {
 
       <main className="main-content">
         <div className="welcome-row">
-          <div><p className="eyebrow">CLASS 9 · LEARNING LIBRARY</p><h1>স্বাগতম, {profile.full_name || 'শিক্ষার্থী'}!</h1><p className="muted">যে অধ্যায়ের সমাধান দরকার, সেটি বেছে নাও।</p></div>
+          <div>
+            <p className="eyebrow">{PROGRAM_LABELS[selectedClass]?.toUpperCase()} · LEARNING LIBRARY</p>
+            <h1>স্বাগতম, {profile.full_name || 'শিক্ষার্থী'}!</h1>
+            <p className="muted">যে অধ্যায়ের সমাধান দরকার, সেটি বেছে নাও।</p>
+          </div>
           <div className="welcome-icon"><BookOpen size={30}/></div>
         </div>
 
@@ -224,57 +245,163 @@ function App() {
           </button>)}
         </section>
 
-        <section className="workspace">
-          <aside className="sidebar">
-            <div className="section-heading"><span>{activeChapter ? 'অধ্যায়' : `${bnSubject(subject)} অধ্যায়সমূহ`}</span><span className="count">{visibleChapters.length}</span></div>
-            {visibleChapters.length === 0 ? <p className="empty-note">এখনো কোনো অধ্যায় যোগ করা হয়নি।</p> : visibleChapters.map(c =>
-              <button key={c.id} className={`chapter-button ${activeChapter?.id === c.id ? 'active' : ''}`} onClick={() => {setActiveChapter(c);setActiveTopic('all');setSelectedSolution(null);}}>
-                <span className="chapter-num">{String(c.sort_order).padStart(2,'0')}</span><span>{c.title}</span><ChevronRight size={16}/>
-              </button>
+        {/* ১. অধ্যায় সিলেক্ট করা না থাকলে: অধ্যায়ের গ্রিড */}
+        {!activeChapter ? (
+          <section className="chapter-selection-section">
+            <div className="section-heading">
+              <h2>{bnSubject(subject)} অধ্যায়সমূহ - {PROGRAM_LABELS[selectedClass]} ({visibleChapters.length})</h2>
+            </div>
+            
+            {visibleChapters.length === 0 ? (
+              <p className="empty-note">এই শ্রেণির জন্য এখনো কোনো অধ্যায় যোগ করা হয়নি।</p>
+            ) : (
+              <div className="chapter-cards-grid">
+                {visibleChapters.map(c => (
+                  <button key={c.id} className="chapter-card-box" onClick={() => { setActiveChapter(c); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}>
+                    <span className="chapter-num">{String(c.sort_order).padStart(2,'0')}</span>
+                    <span className="chapter-card-title">{c.title}</span>
+                    <ChevronRight size={20} className="chapter-card-arrow"/>
+                  </button>
+                ))}
+              </div>
             )}
-            {profile.role === 'admin' && <form className="inline-form" onSubmit={addChapter}><input value={newChapter} onChange={e=>setNewChapter(e.target.value)} placeholder="নতুন অধ্যায়ের নাম"/><button title="অধ্যায় যোগ" type="submit"><Plus size={17}/></button></form>}
-          </aside>
 
-          <section className="content-panel">
-            {selectedSolution ? <SolutionView solution={selectedSolution} onBack={() => setSelectedSolution(null)} admin={profile.role === 'admin'} onStatus={setSolutionStatus}/> :
-              <>
-                <div className="content-title-row"><div><p className="eyebrow">{activeChapter ? activeChapter.subject.toUpperCase() : 'SOLUTION LIBRARY'}</p><h2>{activeChapter?.title || `${bnSubject(subject)} সমাধান লাইব্রেরি`}</h2></div><span className="result-count">{visibleSolutions.length}টি সমাধান</span></div>
-                <div className="search-box"><Search size={19}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="অঙ্কের নম্বর, টপিক বা নাম দিয়ে খুঁজুন…"/>{query && <button onClick={()=>setQuery('')}><X size={16}/></button>}</div>
-                {activeChapter && <div className="topic-strip"><button className={activeTopic==='all'?'topic active':'topic'} onClick={()=>setActiveTopic('all')}>সব টপিক</button>{chapterTopics.map(t=><button key={t.id} className={activeTopic===t.id?'topic active':'topic'} onClick={()=>setActiveTopic(t.id)}>{t.title}</button>)}</div>}
-                {profile.role === 'admin' && activeChapter && <form className="inline-form topic-form" onSubmit={addTopic}><input value={newTopic} onChange={e=>setNewTopic(e.target.value)} placeholder="এই অধ্যায়ে নতুন টপিক যোগ করো"/><button type="submit"><Plus size={17}/> টপিক</button></form>}
-                <div className="solution-list">
-                  {visibleSolutions.length === 0 ? <div className="empty-state"><div className="empty-icon"><CircleHelp size={26}/></div><strong>{query ? 'কোনো মিল পাওয়া যায়নি' : 'এখানে এখনো সমাধান নেই'}</strong><p>{query ? 'অঙ্কের নম্বর বা টপিকের নাম ঠিক আছে কি না দেখো।' : 'সমাধান যোগ হলে এখানে দেখা যাবে।'}</p></div> :
-                    visibleSolutions.map(s=><button className="solution-row" key={s.id} onClick={()=>setSelectedSolution(s)}>
-                      <span className="question-number">{s.question_number}</span><span className="solution-meta"><strong>{s.title}</strong><small>{s.topics?.title || 'টপিক নির্ধারণ করা হয়নি'}{profile.role === 'admin' && s.status !== 'published' ? ` · ${s.status.toUpperCase()}` : ''}</small></span><ChevronRight size={18}/>
-                    </button>)}
-                </div>
-                {profile.role === 'admin' && <AdminImport {...{chapterList,importChapter,setImportChapter,importText,setImportText,importStatus,setImportStatus,importSolutions,importBusy}}/>}
-              </>
-            }
+            {profile.role === 'admin' && (
+              <form className="inline-form admin-add-chapter" onSubmit={addChapter}>
+                <input value={newChapter} onChange={e=>setNewChapter(e.target.value)} placeholder="নতুন অধ্যায়ের নাম"/>
+                <button title="অধ্যায় যোগ" type="submit"><Plus size={17}/> অধ্যায় যোগ</button>
+              </form>
+            )}
           </section>
-        </section>
-        <footer className="footer">© Physics & Chemistry with Ananda · শিক্ষার জন্য, তোমার পাশে।</footer>
+        ) : (
+          /* ২. অধ্যায় সিলেক্ট করলে: সমাধান পেজ */
+          <section className="chapter-detail-page">
+            <div className="active-chapter-header">
+              <button className="back-button" onClick={() => { setActiveChapter(null); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}>
+                <ArrowLeft size={18}/> অধ্যায় তালিকায় ফিরুন
+              </button>
+              <h2>{activeChapter.title}</h2>
+            </div>
+
+            {selectedSolution ? (
+              <SolutionView solution={selectedSolution} onBack={() => setSelectedSolution(null)} admin={profile.role === 'admin'} onStatus={setSolutionStatus}/>
+            ) : (
+              <>
+                <div className="search-box">
+                  <Search size={19}/>
+                  <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="অঙ্কের নম্বর, টপিক বা নাম দিয়ে খুঁজুন…"/>
+                  {query && <button onClick={()=>setQuery('')}><X size={16}/></button>}
+                </div>
+
+                <div className="topic-strip">
+                  <button className={activeTopic==='all'?'topic active':'topic'} onClick={()=>setActiveTopic('all')}>সব টপিক</button>
+                  {chapterTopics.map(t=>(
+                    <button key={t.id} className={activeTopic===t.id?'topic active':'topic'} onClick={()=>setActiveTopic(t.id)}>
+                      {t.title}
+                    </button>
+                  ))}
+                </div>
+
+                {profile.role === 'admin' && (
+                  <form className="inline-form topic-form" onSubmit={addTopic}>
+                    <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} placeholder="এই অধ্যায়ে নতুন টপিক যোগ করো"/>
+                    <button type="submit"><Plus size={17}/> টপিক</button>
+                  </form>
+                )}
+
+                <div className="solution-list">
+                  {visibleSolutions.length === 0 ? (
+                    <div className="empty-state">
+                      <div className="empty-icon"><CircleHelp size={26}/></div>
+                      <strong>{query ? 'কোনো মিল পাওয়া যায়নি' : 'এখানে এখনো সমাধান নেই'}</strong>
+                      <p>{query ? 'অঙ্কের নম্বর বা টপিকের নাম ঠিক আছে কি না দেখো।' : 'সমাধান যোগ হলে এখানে দেখা যাবে।'}</p>
+                    </div>
+                  ) : (
+                    visibleSolutions.map(s=>(
+                      <button className="solution-row" key={s.id} onClick={()=>setSelectedSolution(s)}>
+                        <span className="question-number">{s.question_number}</span>
+                        <span className="solution-meta">
+                          <strong>{s.title}</strong>
+                          <small>{s.topics?.title || 'টপিক নির্ধারণ করা হয়নি'}{profile.role === 'admin' && s.status !== 'published' ? ` · ${s.status.toUpperCase()}` : ''}</small>
+                        </span>
+                        <ChevronRight size={18}/>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {profile.role === 'admin' && (
+                  <AdminImport {...{chapterList,importChapter,setImportChapter,importText,setImportText,importStatus,setImportStatus,importSolutions,importBusy}}/>
+                )}
+              </>
+            )}
+          </section>
+        )}
+
+        <footer className="footer">© ফিজিক্স & কেমিস্ট্রি with আনন্দ · শিক্ষার জন্য, তোমার পাশে।</footer>
       </main>
     </div>
   );
 }
 
-function LoginScreen({studentId,setStudentId,password,setPassword,login,error}) {
-  return <div className="login-page"><div className="login-decoration decor-one"/><div className="login-decoration decor-two"/>
-    <div className="login-card"><div className="login-logo"><Atom size={31}/></div><p className="eyebrow">PHYSICS & CHEMISTRY WITH ANANDA</p><h1>Student Solution Portal</h1><p className="muted">তোমার আইডি দিয়ে লগইন করে সমাধান লাইব্রেরিতে প্রবেশ করো।</p>
-      <form onSubmit={login} className="login-form"><label>Student ID<input autoComplete="username" value={studentId} onChange={e=>setStudentId(e.target.value.replace(/\D/g,'').slice(0,7))} placeholder="2609001" inputMode="numeric" required maxLength={7}/><small>৭ ডিজিট · 2609 দিয়ে শুরু</small></label><label>Password<input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="তোমার পাসওয়ার্ড" required/></label>
-        {error && <div className="alert error"><AlertCircle size={17}/>{error}</div>}<button className="primary-button" type="submit">লগইন করো <ChevronRight size={18}/></button></form>
-      <div className="login-note"><ShieldCheck size={16}/><span>শুধু অনুমোদিত শিক্ষার্থীরা প্রবেশ করতে পারবে। নতুন আইডির জন্য অফিসে যোগাযোগ করো।</span></div>
-    </div><p className="login-foot">A PCA Learning Platform</p>
-  </div>;
+{/* লগইন স্ক্রিন - যেখানে ক্লাস নির্বাচন করার অপশন যুক্ত করা হয়েছে */}
+function LoginScreen({studentId,setStudentId,password,setPassword,selectedClass,setSelectedClass,login,error}) {
+  return (
+    <div className="login-page">
+      <div className="login-decoration decor-one"/>
+      <div className="login-decoration decor-two"/>
+      <div className="login-card">
+        <div className="login-logo-container">
+          <img src="/logo.png" alt="PCA Logo" className="login-main-logo" onError={(e)=>{e.target.style.display='none';}} />
+          <Atom size={36} className="fallback-login-icon"/>
+        </div>
+        
+        <h1 className="chandrabati-login-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</h1>
+        <p className="eyebrow">STUDENT SOLUTION PORTAL</p>
+        <p className="muted">তোমার শ্রেণি, আইডি এবং পাসওয়ার্ড দিয়ে প্রবেশ করো।</p>
+
+        <form onSubmit={login} className="login-form">
+          <label>
+            শ্রেণি / কোর্স নির্বাচন করো
+            <select value={selectedClass} onChange={e=>setSelectedClass(e.target.value)} className="class-select-input">
+              <option value="9">ক্লাস ৯ (Class 9)</option>
+              <option value="10">ক্লাস ১০ / SSC</option>
+              <option value="hsc">HSC (একাদশ-দ্বাদশ)</option>
+              <option value="admission">এডমিশন (Admission)</option>
+            </select>
+          </label>
+
+          <label>
+            Student ID
+            <input autoComplete="username" value={studentId} onChange={e=>setStudentId(e.target.value.replace(/\D/g,'').slice(0,7))} placeholder="2609001" inputMode="numeric" required maxLength={7}/>
+            <small>৭ ডিজিট · 2609 দিয়ে শুরু</small>
+          </label>
+
+          <label>
+            Password
+            <input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="তোমার পাসওয়ার্ড" required/>
+          </label>
+
+          {error && <div className="alert error"><AlertCircle size={17}/>{error}</div>}
+
+          <button className="primary-button" type="submit">লগইন করো <ChevronRight size={18}/></button>
+        </form>
+
+        <div className="login-note">
+          <ShieldCheck size={16}/>
+          <span>শুধু অনুমোদিত শিক্ষার্থীরা প্রবেশ করতে পারবে। নতুন আইডির জন্য অফিসে যোগাযোগ করো।</span>
+        </div>
+      </div>
+      <p className="login-foot">A PCA Learning Platform</p>
+    </div>
+  );
 }
 
 function SetupScreen() {
-  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1><p>ওয়েবসাইট চালু করতে প্রজেক্টের URL ও publishable/anon key সেট করতে হবে।</p><ol><li>Supabase project তৈরি করো।</li><li>প্রজেক্টের SQL Editor-এ <code>supabase/schema.sql</code> চালাও।</li><li><code>.env.example</code> কপি করে <code>.env</code> তৈরি করো এবং দুইটি মান বসাও।</li><li>তারপর <code>npm run dev</code> চালাও।</li></ol><div className="alert"><AlertCircle size={17}/>Service role key কখনো frontend-এ বসাবে না।</div></div></div>;
+  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1><p>ওয়েবসাইট চালু করতে প্রজেক্টের URL ও publishable/anon key সেট করতে হবে।</p></div></div>;
 }
 
 function SolutionView({solution,onBack,admin,onStatus}) {
-  // সলিউশন লোড বা পরিবর্তন হওয়ার সাথে সাথে MathJax সমীকরণগুলো সুন্দর করে ফরম্যাট করবে
   useEffect(() => {
     if (window.MathJax && window.MathJax.typesetPromise) {
       window.MathJax.typesetPromise();
@@ -290,22 +417,8 @@ function SolutionView({solution,onBack,admin,onStatus}) {
 }
 
 function AdminImport({chapterList,importChapter,setImportChapter,importText,setImportText,importStatus,setImportStatus,importSolutions,importBusy}) {
-  const example = `[
-  {
-    "question_number": 1,
-    "title": "চাপ নির্ণয়",
-    "topic_title": "চাপ",
-    "question_html": "<p>প্রশ্নের বিবরণ এখানে লিখবে।</p>",
-    "solution_html": "<h3>দেওয়া আছে</h3><p>বল, F = 100 N</p><h3>সূত্র</h3><p>চাপ, P = F/A</p><h3>সমাধান</h3><p>প্রয়োজনীয় মান বসিয়ে হিসাব করো।</p><p><b>উত্তর:</b> ...</p>"
-  }
-]`;
-  return <details className="import-panel"><summary><Upload size={18}/> AI-এর তৈরি সমাধান Paste / Import</summary><div className="import-inner"><p className="muted">AI-এর কাছ থেকে JSON array নাও। প্রথমে অল্প কয়েকটি অঙ্ক দিয়ে পরীক্ষা করো, সূত্র ও উত্তর যাচাই করে তারপর Publish করো।</p>
-    <form onSubmit={importSolutions}><label>অধ্যায় নির্বাচন<select value={importChapter} onChange={e=>setImportChapter(e.target.value)} required><option value="">অধ্যায় বেছে নাও</option>{chapterList.map(c=><option value={c.id} key={c.id}>{c.subject} — {c.title}</option>)}</select></label>
-      <label>কীভাবে যোগ হবে<select value={importStatus} onChange={e=>setImportStatus(e.target.value)}><option value="draft">Draft — যাচাইয়ের পর Publish</option><option value="published">Published — সঙ্গে সঙ্গে শিক্ষার্থীরা দেখবে</option></select></label>
-      <label>JSON কনটেন্ট<textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder={example} rows={10} required/></label>
-      <div className="import-actions"><button type="button" className="secondary-button" onClick={()=>setImportText(example)}>নমুনা বসাও</button><button className="primary-button" disabled={importBusy} type="submit">{importBusy ? 'Import হচ্ছে…' : 'Import করো'}</button></div>
-    </form><div className="import-tip"><FileText size={16}/><span><code>topic_title</code> দিলে import-এর আগে ওই অধ্যায়ে একই নামের টপিক তৈরি করে তার <code>topic_id</code> ব্যবহার করো। বর্তমান প্রাথমিক ভার্সনে JSON-এ <code>topic_id</code> দিলে সরাসরি যুক্ত হবে।</span></div>
-  </div></details>;
+  const example = `[{"question_number": 1, "title": "প্রশ্ন ১", "solution_html": "<p>সমাধান...</p>"}]`;
+  return <details className="import-panel"><summary><Upload size={18}/> AI-এর তৈরি সমাধান Paste / Import</summary><div className="import-inner"><form onSubmit={importSolutions}><label>অধ্যায় নির্বাচন<select value={importChapter} onChange={e=>setImportChapter(e.target.value)} required><option value="">অধ্যায় বেছে নাও</option>{chapterList.map(c=><option value={c.id} key={c.id}>{c.subject} — {c.title}</option>)}</select></label><label>JSON কনটেন্ট<textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder={example} rows={8} required/></label><button className="primary-button" disabled={importBusy} type="submit">{importBusy ? 'Import হচ্ছে…' : 'Import করো'}</button></form></div></details>;
 }
 
 createRoot(document.getElementById('root')).render(<App/>);
