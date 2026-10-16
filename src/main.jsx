@@ -7,7 +7,7 @@ import {
   ChevronRight, ArrowLeft, CircleHelp, CheckCircle2, AlertCircle, Plus,
   FileText, Database, X, Ruler, Gauge, Hammer, Sparkles, Scale,
   Thermometer, Radio, Sun, Compass, Battery, Zap, Magnet, Cpu,
-  Orbit, Grid, Link, Calculator, TestTube, Mountain, Flame
+  Orbit, Grid, Link, Calculator, TestTube, Mountain, Flame, Layers
 } from 'lucide-react';
 import './styles.css';
 
@@ -23,11 +23,10 @@ const bnSubject = (s) => s === 'Physics' ? 'ফিজিক্স' : 'কেম�
 const PROGRAM_LABELS = {
   '9': 'ক্লাস ৯',
   '10': 'ক্লাস ১০ / SSC',
-  'hsc': 'HSC',
-  'admission': 'এডমিশন'
+  'hsc': 'HSC (একাদশ-দ্বাদশ)',
+  'admission': 'এডমিশন টেস্ট'
 };
 
-// বাংলায় অধ্যায়ের ক্রমবাচক শব্দ
 const BENGALI_ORDINALS = [
   'প্রথম', 'দ্বিতীয়', 'তৃতীয়', 'চতুর্থ', 'পঞ্চম',
   'ষষ্ঠ', 'সপ্তম', 'অষ্টম', 'নবম', 'দশম',
@@ -39,17 +38,16 @@ function getBengaliOrdinal(index) {
   return BENGALI_ORDINALS[index] || `${index + 1}তম`;
 }
 
-// অধ্যায়ের মূল নাম বের করার ফাংশন (যদি আগের শিরোনামে সংখ্যা থাকে)
 function cleanChapterTitle(title) {
   if (!title) return '';
-  return title.replace(/^([\d১-৯a-zA-Z]+[মতম্থ্রর্ডন্সষ্ঠম]*\s*অধ্যায়\s*[:ঃ-]?\s*)/i, '').trim();
+  return title
+    .replace(/^([\d১-৯a-zA-Z]+[মতম্থ্রর্ডন্সষ্ঠম]*\s*অধ্যায়\s*[:ঃ-]?\s*)/i, '')
+    .replace(/^([০-৯0-9]+\s*[:ঃ.-]?\s*)/i, '')
+    .trim();
 }
 
-// অধ্যায়ের বিষয়বস্তু অনুযায়ী প্রাসঙ্গিক Lucide আইকন নির্বাচন
 function getChapterIcon(title = '', subject = '') {
   const t = title.toLowerCase();
-
-  // পদার্থবিজ্ঞান (Physics)
   if (t.includes('রাশি') || t.includes('পরিমাণ') || t.includes('পরিমাপ')) return Ruler;
   if (t.includes('গতি')) return Gauge;
   if (t.includes('বল')) return Hammer;
@@ -64,14 +62,13 @@ function getChapterIcon(title = '', subject = '') {
   if (t.includes('চৌম্বক') || t.includes('চুম্বক')) return Magnet;
   if (t.includes('তেজস্ক্রিয়') || t.includes('ইলেকট্রনিক্স')) return Cpu;
 
-  // রসায়ন (Chemistry)
   if (t.includes('ধারণা')) return FlaskConical;
   if (t.includes('গঠন') || t.includes('পরমাণু')) return Orbit;
   if (t.includes('পর্যায়')) return Grid;
   if (t.includes('বন্ধন')) return Link;
   if (t.includes('মোল')) return Calculator;
   if (t.includes('বিক্রিয়া')) return Sparkles;
-  if (t.includes('এসিড') || t.includes('ক্ষার') || t.includes('সমতা')) return TestTube;
+  if (t.includes('এসিড') || t.includes('ক্ষার')) return TestTube;
   if (t.includes('খনিজ') || t.includes('সম্পদ')) return Mountain;
   if (t.includes('জীবাশ্ম') || t.includes('হাইড্রোকার্বন')) return Flame;
 
@@ -190,7 +187,8 @@ function App() {
     if (q) list = list.filter(s =>
       String(s.question_number).includes(q) ||
       (s.title || '').toLocaleLowerCase().includes(q) ||
-      (s.topics?.title || '').toLocaleLowerCase().includes(q)
+      (s.topics?.title || '').toLocaleLowerCase().includes(q) ||
+      (s.question_text || '').toLocaleLowerCase().includes(q)
     );
     return list;
   }, [solutions, activeChapter, activeTopic, query, subject, selectedClass, profile]);
@@ -249,145 +247,165 @@ function App() {
   }
 
   if (!supabase) return <SetupScreen />;
-  if (loading) return <div className="center-screen"><div className="spinner"/><p>লোড হচ্ছে…</p></div>;
+  if (loading) return <div className="center-screen"><div className="modern-loader"/><p>পোর্টাল প্রস্তুত হচ্ছে…</p></div>;
   if (!session || !profile) {
     return <LoginScreen {...{studentId,setStudentId,password,setPassword,selectedClass,setSelectedClass,login,error}} />;
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell theme-${subject.toLowerCase()}`}>
       <header className="topbar">
-        <div className="brand-mark">
-          <img src="/logo.png" alt="PCA Logo" className="app-logo" onError={(e)=>{e.target.style.display='none';}} />
-          <Atom size={28} className="fallback-logo-icon" />
-        </div>
-        <div className="brand-copy">
-          <strong className="chandrabati-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</strong>
-          <span>STUDENT PORTAL · {PROGRAM_LABELS[selectedClass]}</span>
-        </div>
-        <div className="topbar-right">
-          {profile.role === 'admin' && <span className="admin-pill"><ShieldCheck size={14}/> Admin</span>}
-          <span className="id-pill">{profile.student_id}</span>
-          <button className="icon-button" title="লগআউট" onClick={logout}><LogOut size={18}/></button>
+        <div className="topbar-inner">
+          <div className="brand-mark">
+            <img src="/logo.png" alt="PCA Logo" className="app-logo" onError={(e)=>{e.target.style.display='none';}} />
+            <Atom size={30} className="fallback-logo-icon" />
+          </div>
+          <div className="brand-copy">
+            <strong className="chandrabati-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</strong>
+            <span className="badge-class-pill">{PROGRAM_LABELS[selectedClass]}</span>
+          </div>
+          <div className="topbar-right">
+            {profile.role === 'admin' && <span className="admin-pill"><ShieldCheck size={14}/> Admin</span>}
+            <span className="id-pill">ID: {profile.student_id}</span>
+            <button className="icon-button logout-btn" title="লগআউট" onClick={logout}><LogOut size={18}/></button>
+          </div>
         </div>
       </header>
 
       <main className="main-content">
-        <div className="welcome-row">
-          <div>
-            <p className="eyebrow">{PROGRAM_LABELS[selectedClass]?.toUpperCase()} · LEARNING LIBRARY</p>
-            <h1>স্বাগতম, {profile.full_name || 'শিক্ষার্থী'}!</h1>
-            <p className="muted">যে অধ্যায়ের সমাধান দরকার, সেটি বেছে নাও।</p>
+        <div className="welcome-banner">
+          <div className="banner-text">
+            <p className="eyebrow-tag">{PROGRAM_LABELS[selectedClass]?.toUpperCase()} • SMART SOLUTION LIBRARY</p>
+            <h1>স্বাগতম, <span className="highlight-name">{profile.full_name || 'শিক্ষার্থী'}</span>!</h1>
+            <p className="muted-desc">ফিজিক্স এবং কেমিস্ট্রির গাণিতিক সমস্যার সহজ ও নিখুঁত সমাধান।</p>
           </div>
-          <div className="welcome-icon"><BookOpen size={30}/></div>
+          <div className="banner-badge-icon"><BookOpen size={36}/></div>
         </div>
 
-        {error && <div className="alert error"><AlertCircle size={17}/>{error}<button onClick={() => setError('')}><X size={15}/></button></div>}
-        {notice && <div className="alert success"><CheckCircle2 size={17}/>{notice}<button onClick={() => setNotice('')}><X size={15}/></button></div>}
+        {error && <div className="alert error"><AlertCircle size={18}/><span>{error}</span><button onClick={() => setError('')}><X size={16}/></button></div>}
+        {notice && <div className="alert success"><CheckCircle2 size={18}/><span>{notice}</span><button onClick={() => setNotice('')}><X size={16}/></button></div>}
 
-        <section className="subject-grid">
-          {SUBJECTS.map(s => <button key={s} className={`subject-card ${s === subject ? 'chosen' : ''} ${s === 'Chemistry' ? 'chemistry' : ''}`} onClick={() => {setSubject(s);setActiveChapter(null);setActiveTopic('all');setSelectedSolution(null);setQuery('');}}>
-            <span className="subject-icon">{s === 'Physics' ? <Atom size={26}/> : <FlaskConical size={26}/>}</span>
-            <span><strong>{bnSubject(s)}</strong><small>{s === 'Physics' ? 'সূত্র, ধারণা ও গাণিতিক সমস্যা' : 'বিক্রিয়া, ধারণা ও গাণিতিক সমস্যা'}</small></span><ChevronRight className="subject-arrow"/>
-          </button>)}
+        {/* বিষয় নির্বাচন (Physics / Chemistry) */}
+        <section className="subject-selector-grid">
+          {SUBJECTS.map(s => (
+            <button key={s} className={`subject-tab-card ${s === subject ? 'active-tab' : ''} ${s.toLowerCase()}`} onClick={() => {setSubject(s);setActiveChapter(null);setActiveTopic('all');setSelectedSolution(null);setQuery('');}}>
+              <div className="subject-tab-icon">
+                {s === 'Physics' ? <Atom size={28}/> : <FlaskConical size={28}/>}
+              </div>
+              <div className="subject-tab-info">
+                <strong>{bnSubject(s)}</strong>
+                <small>{s === 'Physics' ? 'পদার্থবিজ্ঞান গাণিতিক সমাধান' : 'রসায়ন বিক্রিয়া ও সমাধান'}</small>
+              </div>
+              <ChevronRight className="subject-tab-arrow"/>
+            </button>
+          ))}
         </section>
 
-        {/* ১. অধ্যায় সিলেক্ট করা না থাকলে: সুন্দর চতুর্ভুজ আইকনসহ অধ্যায়ের গ্রিড */}
+        {/* ১. অধ্যায় গ্রিড ভিউ */}
         {!activeChapter ? (
-          <section className="chapter-selection-section">
-            <div className="section-heading">
-              <h2>{bnSubject(subject)} অধ্যায়সমূহ - {PROGRAM_LABELS[selectedClass]} ({visibleChapters.length})</h2>
+          <section className="chapter-section-container">
+            <div className="section-title-bar">
+              <h2><Layers size={22}/> {bnSubject(subject)} অধ্যায়সমূহ ({visibleChapters.length})</h2>
             </div>
             
             {visibleChapters.length === 0 ? (
-              <p className="empty-note">এই শ্রেণির জন্য এখনো কোনো অধ্যায় যোগ করা হয়নি।</p>
+              <div className="empty-chapter-box">
+                <CircleHelp size={32}/>
+                <p>এই শ্রেণির জন্য এখনো কোনো অধ্যায় যোগ করা হয়নি।</p>
+              </div>
             ) : (
-              <div className="chapter-cards-grid">
+              <div className="chapter-grid-modern">
                 {visibleChapters.map((c, index) => {
                   const cleanedTitle = cleanChapterTitle(c.title);
                   const ordinal = getBengaliOrdinal(index);
                   const ChapterIcon = getChapterIcon(c.title, subject);
 
                   return (
-                    <button 
+                    <div 
                       key={c.id} 
-                      className="chapter-card-box" 
+                      className="chapter-glass-card" 
                       onClick={() => { setActiveChapter(c); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}
                     >
-                      <div className="chapter-icon-square">
-                        <ChapterIcon size={22} />
+                      <div className="chapter-square-avatar">
+                        <ChapterIcon size={24} />
                       </div>
-                      <div className="chapter-card-text">
-                        <span className="chapter-ordinal-badge">{ordinal} অধ্যায়</span>
-                        <span className="chapter-card-title">{cleanedTitle}</span>
+                      <div className="chapter-details">
+                        <span className="ordinal-tag">{ordinal} অধ্যায়</span>
+                        <h3 className="chapter-main-title">{cleanedTitle}</h3>
                       </div>
-                      <ChevronRight size={18} className="chapter-card-arrow"/>
-                    </button>
+                      <div className="arrow-btn"><ChevronRight size={18}/></div>
+                    </div>
                   );
                 })}
               </div>
             )}
 
             {profile.role === 'admin' && (
-              <form className="inline-form admin-add-chapter" onSubmit={addChapter}>
-                <input value={newChapter} onChange={e=>setNewChapter(e.target.value)} placeholder="নতুন অধ্যায়ের নাম"/>
-                <button title="অধ্যায় যোগ" type="submit"><Plus size={17}/> অধ্যায় যোগ</button>
+              <form className="admin-inline-card" onSubmit={addChapter}>
+                <input value={newChapter} onChange={e=>setNewChapter(e.target.value)} placeholder="+ নতুন অধ্যায়ের নাম লিখুন"/>
+                <button className="btn-primary" type="submit"><Plus size={16}/> অধ্যায় যোগ</button>
               </form>
             )}
           </section>
         ) : (
-          /* ২. অধ্যায় সিলেক্ট করলে: সমাধান পেজ */
-          <section className="chapter-detail-page">
-            <div className="active-chapter-header">
-              <button className="back-button" onClick={() => { setActiveChapter(null); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}>
+          /* ২. নির্বাচিত অধ্যায়ের সমাধান ভিউ */
+          <section className="chapter-detail-container">
+            <div className="chapter-header-nav">
+              <button className="btn-back-link" onClick={() => { setActiveChapter(null); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}>
                 <ArrowLeft size={18}/> অধ্যায় তালিকায় ফিরুন
               </button>
-              <h2>{getBengaliOrdinal(visibleChapters.findIndex(c => c.id === activeChapter.id))} অধ্যায়: {cleanChapterTitle(activeChapter.title)}</h2>
+              <h2 className="selected-chapter-heading">
+                {getBengaliOrdinal(visibleChapters.findIndex(c => c.id === activeChapter.id))} অধ্যায়: {cleanChapterTitle(activeChapter.title)}
+              </h2>
             </div>
 
             {selectedSolution ? (
               <SolutionView solution={selectedSolution} onBack={() => setSelectedSolution(null)} admin={profile.role === 'admin'} onStatus={setSolutionStatus}/>
             ) : (
               <>
-                <div className="search-box">
-                  <Search size={19}/>
-                  <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="অঙ্কের নম্বর, টপিক বা নাম দিয়ে খুঁজুন…"/>
-                  {query && <button onClick={()=>setQuery('')}><X size={16}/></button>}
+                <div className="search-bar-wrapper">
+                  <Search size={20} className="search-icon"/>
+                  <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="অঙ্কের নম্বর, প্রশ্ন বা টপিকের নাম দিয়ে খুঁজুন…"/>
+                  {query && <button className="clear-search" onClick={()=>setQuery('')}><X size={16}/></button>}
                 </div>
 
-                <div className="topic-strip">
-                  <button className={activeTopic==='all'?'topic active':'topic'} onClick={()=>setActiveTopic('all')}>সব টপিক</button>
+                <div className="topic-pill-strip">
+                  <button className={activeTopic==='all'?'pill-item active':'pill-item'} onClick={()=>setActiveTopic('all')}>সব টপিক</button>
                   {chapterTopics.map(t=>(
-                    <button key={t.id} className={activeTopic===t.id?'topic active':'topic'} onClick={()=>setActiveTopic(t.id)}>
+                    <button key={t.id} className={activeTopic===t.id?'pill-item active':'pill-item'} onClick={()=>setActiveTopic(t.id)}>
                       {t.title}
                     </button>
                   ))}
                 </div>
 
                 {profile.role === 'admin' && (
-                  <form className="inline-form topic-form" onSubmit={addTopic}>
-                    <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} placeholder="এই অধ্যায়ে নতুন টপিক যোগ করো"/>
-                    <button type="submit"><Plus size={17}/> টপিক</button>
+                  <form className="admin-inline-card" onSubmit={addTopic}>
+                    <input value={newTopic} onChange={e=>setNewTopic(e.target.value)} placeholder="+ নতুন টপিকের নাম"/>
+                    <button className="btn-primary" type="submit"><Plus size={16}/> টপিক</button>
                   </form>
                 )}
 
-                <div className="solution-list">
+                <div className="solution-card-list">
                   {visibleSolutions.length === 0 ? (
-                    <div className="empty-state">
-                      <div className="empty-icon"><CircleHelp size={26}/></div>
-                      <strong>{query ? 'কোনো মিল পাওয়া যায়নি' : 'এখানে এখনো সমাধান নেই'}</strong>
-                      <p>{query ? 'অঙ্কের নম্বর বা টপিকের নাম ঠিক আছে কি না দেখো।' : 'সমাধান যোগ হলে এখানে দেখা যাবে।'}</p>
+                    <div className="empty-chapter-box">
+                      <CircleHelp size={32}/>
+                      <strong>{query ? 'কোনো সমাধান পাওয়া যায়নি' : 'এখানে এখনো সমাধান আপলোড করা হয়নি'}</strong>
+                      <p>{query ? 'অঙ্কের নম্বর বা বানান ঠিক আছে কি না পুনরায় দেখুন।' : 'দ্রুত সমাধান যুক্ত করা হবে।'}</p>
                     </div>
                   ) : (
                     visibleSolutions.map(s=>(
-                      <button className="solution-row" key={s.id} onClick={()=>setSelectedSolution(s)}>
-                        <span className="question-number">{s.question_number}</span>
-                        <span className="solution-meta">
-                          <strong>{s.title}</strong>
-                          <small>{s.topics?.title || 'টপিক নির্ধারণ করা হয়নি'}{profile.role === 'admin' && s.status !== 'published' ? ` · ${s.status.toUpperCase()}` : ''}</small>
-                        </span>
-                        <ChevronRight size={18}/>
-                      </button>
+                      <div className="solution-item-card" key={s.id} onClick={()=>setSelectedSolution(s)}>
+                        <div className="math-num-badge">
+                          <small>অঙ্ক</small>
+                          <strong>{s.question_number}</strong>
+                        </div>
+                        <div className="solution-info">
+                          <span className="topic-name-tag">{s.topics?.title || 'সাধারণ প্রশ্ন'}</span>
+                          <h4 className="solution-item-title">{s.question_text ? s.question_text.replace(/<[^>]*>?/gm, '').slice(0, 90) + '...' : s.title}</h4>
+                          {profile.role === 'admin' && s.status !== 'published' && <span className="status-indicator">{s.status.toUpperCase()}</span>}
+                        </div>
+                        <ChevronRight size={20} className="card-arrow"/>
+                      </div>
                     ))
                   )}
                 </div>
@@ -400,7 +418,7 @@ function App() {
           </section>
         )}
 
-        <footer className="footer">© ফিজিক্স & কেমিস্ট্রি with আনন্দ · শিক্ষার জন্য, তোমার পাশে।</footer>
+        <footer className="footer-bar">© ফিজিক্স & কেমিস্ট্রি with আনন্দ • PCA Student Portal</footer>
       </main>
     </div>
   );
@@ -408,58 +426,53 @@ function App() {
 
 function LoginScreen({studentId,setStudentId,password,setPassword,selectedClass,setSelectedClass,login,error}) {
   return (
-    <div className="login-page">
-      <div className="login-decoration decor-one"/>
-      <div className="login-decoration decor-two"/>
-      <div className="login-card">
-        <div className="login-logo-container">
-          <img src="/logo.png" alt="PCA Logo" className="login-main-logo" onError={(e)=>{e.target.style.display='none';}} />
-          <Atom size={36} className="fallback-login-icon"/>
+    <div className="login-viewport">
+      <div className="login-glass-card">
+        <div className="login-brand-header">
+          <img src="/logo.png" alt="PCA Logo" className="login-brand-logo" onError={(e)=>{e.target.style.display='none';}} />
+          <Atom size={42} className="login-fallback-icon"/>
+          <h1 className="chandrabati-login-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</h1>
+          <p className="portal-sub">STUDENT SOLUTION PORTAL</p>
         </div>
-        
-        <h1 className="chandrabati-login-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</h1>
-        <p className="eyebrow">STUDENT SOLUTION PORTAL</p>
-        <p className="muted">তোমার শ্রেণি, আইডি এবং পাসওয়ার্ড দিয়ে প্রবেশ করো।</p>
 
-        <form onSubmit={login} className="login-form">
-          <label>
-            শ্রেণি / কোর্স নির্বাচন করো
-            <select value={selectedClass} onChange={e=>setSelectedClass(e.target.value)} className="class-select-input">
+        <form onSubmit={login} className="login-form-modern">
+          <div className="form-group">
+            <label>শ্রেণি / কোর্স নির্বাচন করো</label>
+            <select value={selectedClass} onChange={e=>setSelectedClass(e.target.value)} className="select-custom">
               <option value="9">ক্লাস ৯ (Class 9)</option>
               <option value="10">ক্লাস ১০ / SSC</option>
               <option value="hsc">HSC (একাদশ-দ্বাদশ)</option>
               <option value="admission">এডমিশন (Admission)</option>
             </select>
-          </label>
+          </div>
 
-          <label>
-            Student ID
-            <input autoComplete="username" value={studentId} onChange={e=>setStudentId(e.target.value.replace(/\D/g,'').slice(0,7))} placeholder="2609001" inputMode="numeric" required maxLength={7}/>
-            <small>৭ ডিজিট · 2609 দিয়ে শুরু</small>
-          </label>
+          <div className="form-group">
+            <label>Student ID</label>
+            <input autoComplete="username" value={studentId} onChange={e=>setStudentId(e.target.value.replace(/\D/g,'').slice(0,7))} placeholder="2609001" inputMode="numeric" required maxLength={7} className="input-custom"/>
+            <small className="hint-text">৭ ডিজিট • 2609 দিয়ে শুরু</small>
+          </div>
 
-          <label>
-            Password
-            <input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="তোমার পাসওয়ার্ড" required/>
-          </label>
+          <div className="form-group">
+            <label>Password</label>
+            <input type="password" autoComplete="current-password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="তোমার পাসওয়ার্ড" required className="input-custom"/>
+          </div>
 
-          {error && <div className="alert error"><AlertCircle size={17}/>{error}</div>}
+          {error && <div className="alert error"><AlertCircle size={18}/><span>{error}</span></div>}
 
-          <button className="primary-button" type="submit">লগইন করো <ChevronRight size={18}/></button>
+          <button className="btn-login-submit" type="submit">লগইন করো <ChevronRight size={18}/></button>
         </form>
 
-        <div className="login-note">
+        <div className="login-footer-note">
           <ShieldCheck size={16}/>
-          <span>শুধু অনুমোদিত শিক্ষার্থীরা প্রবেশ করতে পারবে। নতুন আইডির জন্য অফিসে যোগাযোগ করো।</span>
+          <span>PCA অনুমোদিত শিক্ষার্থীরাই প্রবেশ করতে পারবে।</span>
         </div>
       </div>
-      <p className="login-foot">A PCA Learning Platform</p>
     </div>
   );
 }
 
 function SetupScreen() {
-  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1></div></div>;
+  return <div className="center-screen"><div className="login-glass-card"><h1>Supabase সংযোগ বাকি</h1></div></div>;
 }
 
 function SolutionView({solution,onBack,admin,onStatus}) {
@@ -469,17 +482,63 @@ function SolutionView({solution,onBack,admin,onStatus}) {
     }
   }, [solution]);
 
-  return <div className="solution-view"><button className="back-button" onClick={onBack}><ArrowLeft size={17}/> সমাধানের তালিকায় ফিরুন</button>
-    <div className="solution-view-heading"><span className="question-number large">{solution.question_number}</span><div><p className="eyebrow">STEP-BY-STEP SOLUTION</p><h2>{solution.title}</h2><p className="muted">{solution.topics?.title || 'টপিক নির্ধারণ করা হয়নি'}</p></div></div>
-    {admin && <div className="admin-status-bar"><span>বর্তমান স্ট্যাটাস: <b>{solution.status}</b></span>{solution.status !== 'published' && <button className="small-button" onClick={()=>onStatus(solution,'published')}>Publish</button>}{solution.status === 'published' && <button className="small-button secondary" onClick={()=>onStatus(solution,'draft')}>Unpublish</button>}</div>}
-    {solution.question_html && <section className="solution-block"><h3>প্রশ্ন</h3><div className="rich-content" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(solution.question_html)}}/></section>}
-    <section className="solution-block"><h3>সমাধান</h3>{solution.solution_html ? <div className="rich-content" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(solution.solution_html)}}/> : <p className="muted">এই অঙ্কের সমাধান এখনো যোগ করা হয়নি।</p>}</section>
-  </div>;
+  return (
+    <div className="solution-full-view">
+      <button className="btn-back-link" onClick={onBack}><ArrowLeft size={18}/> সমাধান তালিকায় ফিরুন</button>
+      
+      <div className="solution-card-header">
+        <div className="badge-lg">অঙ্ক {solution.question_number}</div>
+        <div>
+          <span className="topic-tag">{solution.topics?.title || 'সাধারণ টপিক'}</span>
+          <h2>{solution.title}</h2>
+        </div>
+      </div>
+
+      {admin && (
+        <div className="admin-status-bar">
+          <span>স্ট্যাটাস: <b>{solution.status}</b></span>
+          {solution.status !== 'published' ? (
+            <button className="btn-sm btn-pub" onClick={()=>onStatus(solution,'published')}>Publish</button>
+          ) : (
+            <button className="btn-sm btn-draft" onClick={()=>onStatus(solution,'draft')}>Unpublish</button>
+          )}
+        </div>
+      )}
+
+      {solution.question_html && (
+        <div className="solution-content-block question-block">
+          <h3><CircleHelp size={20}/> প্রশ্ন</h3>
+          <div className="rich-render" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(solution.question_html)}}/>
+        </div>
+      )}
+
+      <div className="solution-content-block answer-block">
+        <h3><CheckCircle2 size={20}/> সমাধান (Step-by-Step)</h3>
+        {solution.solution_html ? (
+          <div className="rich-render" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(solution.solution_html)}}/>
+        ) : (
+          <p className="muted-desc">এই অঙ্কের সমাধান এখনো আপলোড করা হয়নি।</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function AdminImport({chapterList,importChapter,setImportChapter,importText,setImportText,importStatus,setImportStatus,importSolutions,importBusy}) {
   const example = `[{"question_number": 1, "title": "প্রশ্ন ১", "solution_html": "<p>সমাধান...</p>"}]`;
-  return <details className="import-panel"><summary><Upload size={18}/> AI-এর তৈরি সমাধান Paste / Import</summary><div className="import-inner"><form onSubmit={importSolutions}><label>অধ্যায় নির্বাচন<select value={importChapter} onChange={e=>setImportChapter(e.target.value)} required><option value="">অধ্যায় বেছে নাও</option>{chapterList.map(c=><option value={c.id} key={c.id}>{c.subject} — {c.title}</option>)}</select></label><label>JSON কনটেন্ট<textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder={example} rows={8} required/></label><button className="primary-button" disabled={importBusy} type="submit">{importBusy ? 'Import হচ্ছে…' : 'Import করো'}</button></form></div></details>;
+  return (
+    <details className="admin-import-drawer">
+      <summary><Upload size={18}/> AI সমাধান Import/Paste</summary>
+      <form onSubmit={importSolutions} className="admin-import-form">
+        <select value={importChapter} onChange={e=>setImportChapter(e.target.value)} required className="select-custom">
+          <option value="">অধ্যায় বেছে নাও</option>
+          {chapterList.map(c=><option value={c.id} key={c.id}>{c.subject} — {c.title}</option>)}
+        </select>
+        <textarea value={importText} onChange={e=>setImportText(e.target.value)} placeholder={example} rows={6} required className="input-custom"/>
+        <button className="btn-primary" disabled={importBusy} type="submit">{importBusy ? 'Importing…' : 'Import'}</button>
+      </form>
+    </details>
+  );
 }
 
 createRoot(document.getElementById('root')).render(<App/>);
