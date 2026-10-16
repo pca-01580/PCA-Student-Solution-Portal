@@ -60,20 +60,31 @@ function App() {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  async function loadProfile(uid) {
-    const { data, error: e } = await supabase.from('profiles')
-      .select('*').eq('user_id', uid).maybeSingle();
-    if (e) setError(e.message);
-    if (!data || !data.active) {
-      setProfile(null);
-      setError('এই অ্যাকাউন্টের সক্রিয় প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করো।');
-    } else {
-      setProfile(data);
-      setError('');
-      await loadContent();
-    }
+ async function loadProfile(uid) {
+  const { data, error: e } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', uid)
+    .maybeSingle();
+
+  // ডাটাবেস বা RLS পলিসির আসল ত্রুটি দেখালে এখানে আটকে যাবে এবং সঠিক মেসেজ দেখাবে
+  if (e) {
+    console.error('Supabase Profile Error:', e);
+    setError(`ডাটাবেস ত্রুটি (${e.code || ''}): ${e.message}`);
     setLoading(false);
+    return;
   }
+
+  if (!data || !data.active) {
+    setProfile(null);
+    setError('এই অ্যাকাউন্টের সক্রিয় প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করো।');
+  } else {
+    setProfile(data);
+    setError('');
+    await loadContent();
+  }
+  setLoading(false);
+}
 
   async function loadContent() {
     const [c, t, s] = await Promise.all([
