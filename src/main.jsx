@@ -5,7 +5,9 @@ import { createClient } from '@supabase/supabase-js';
 import {
   Atom, FlaskConical, Search, LogOut, BookOpen, ShieldCheck, Upload,
   ChevronRight, ArrowLeft, CircleHelp, CheckCircle2, AlertCircle, Plus,
-  FileText, Database, X, GraduationCap
+  FileText, Database, X, Ruler, Gauge, Hammer, Sparkles, Scale,
+  Thermometer, Radio, Sun, Compass, Battery, Zap, Magnet, Cpu,
+  Orbit, Grid, Link, Calculator, TestTube, Mountain, Flame
 } from 'lucide-react';
 import './styles.css';
 
@@ -25,6 +27,57 @@ const PROGRAM_LABELS = {
   'admission': 'এডমিশন'
 };
 
+// বাংলায় অধ্যায়ের ক্রমবাচক শব্দ
+const BENGALI_ORDINALS = [
+  'প্রথম', 'দ্বিতীয়', 'তৃতীয়', 'চতুর্থ', 'পঞ্চম',
+  'ষষ্ঠ', 'সপ্তম', 'অষ্টম', 'নবম', 'দশম',
+  'একাদশ', 'দ্বাদশ', 'ত্রয়োদশ', 'চতুর্দশ', 'পঞ্চদশ',
+  'ষোড়শ', 'সপ্তদশ', 'অষ্টাদশ', 'উনবিংশ', 'বিংশ'
+];
+
+function getBengaliOrdinal(index) {
+  return BENGALI_ORDINALS[index] || `${index + 1}তম`;
+}
+
+// অধ্যায়ের মূল নাম বের করার ফাংশন (যদি আগের শিরোনামে সংখ্যা থাকে)
+function cleanChapterTitle(title) {
+  if (!title) return '';
+  return title.replace(/^([\d১-৯a-zA-Z]+[মতম্থ্রর্ডন্সষ্ঠম]*\s*অধ্যায়\s*[:ঃ-]?\s*)/i, '').trim();
+}
+
+// অধ্যায়ের বিষয়বস্তু অনুযায়ী প্রাসঙ্গিক Lucide আইকন নির্বাচন
+function getChapterIcon(title = '', subject = '') {
+  const t = title.toLowerCase();
+
+  // পদার্থবিজ্ঞান (Physics)
+  if (t.includes('রাশি') || t.includes('পরিমাণ') || t.includes('পরিমাপ')) return Ruler;
+  if (t.includes('গতি')) return Gauge;
+  if (t.includes('বল')) return Hammer;
+  if (t.includes('কাজ') || t.includes('ক্ষমতা') || t.includes('শক্তি')) return Sparkles;
+  if (t.includes('অবস্থা') || t.includes('চাপ')) return Scale;
+  if (t.includes('তাপ')) return Thermometer;
+  if (t.includes('তরঙ্গ') || t.includes('শব্দ')) return Radio;
+  if (t.includes('প্রতিফলন')) return Sun;
+  if (t.includes('প্রতিসরণ') || t.includes('আলো')) return Compass;
+  if (t.includes('স্থির') && (t.includes('বিদ্যুৎ') || t.includes('তড়িৎ'))) return Battery;
+  if (t.includes('চল') && (t.includes('বিদ্যুৎ') || t.includes('তড়িৎ'))) return Zap;
+  if (t.includes('চৌম্বক') || t.includes('চুম্বক')) return Magnet;
+  if (t.includes('তেজস্ক্রিয়') || t.includes('ইলেকট্রনিক্স')) return Cpu;
+
+  // রসায়ন (Chemistry)
+  if (t.includes('ধারণা')) return FlaskConical;
+  if (t.includes('গঠন') || t.includes('পরমাণু')) return Orbit;
+  if (t.includes('পর্যায়')) return Grid;
+  if (t.includes('বন্ধন')) return Link;
+  if (t.includes('মোল')) return Calculator;
+  if (t.includes('বিক্রিয়া')) return Sparkles;
+  if (t.includes('এসিড') || t.includes('ক্ষার') || t.includes('সমতা')) return TestTube;
+  if (t.includes('খনিজ') || t.includes('সম্পদ')) return Mountain;
+  if (t.includes('জীবাশ্ম') || t.includes('হাইড্রোকার্বন')) return Flame;
+
+  return subject === 'Physics' ? Atom : FlaskConical;
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -33,7 +86,7 @@ function App() {
   const [notice, setNotice] = useState('');
   const [studentId, setStudentId] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedClass, setSelectedClass] = useState('9'); // ডিফোল্ট ক্লাস ৯
+  const [selectedClass, setSelectedClass] = useState('9');
   const [subject, setSubject] = useState('Physics');
   const [chapterList, setChapterList] = useState([]);
   const [topics, setTopics] = useState([]);
@@ -126,7 +179,6 @@ function App() {
     setSession(null); setProfile(null); setActiveChapter(null); setSelectedSolution(null);
   }
 
-  // সিলেক্ট করা ক্লাসের উপর ভিত্তি করে ফিল্টারিং
   const visibleChapters = chapterList.filter(c => c.subject === subject && (c.class_level === selectedClass || !c.class_level));
   const chapterTopics = topics.filter(t => t.chapter_id === activeChapter?.id);
   const visibleSolutions = useMemo(() => {
@@ -171,10 +223,6 @@ function App() {
     try {
       rows = JSON.parse(importText);
       if (!Array.isArray(rows) || rows.length === 0) throw new Error('একটি JSON array দিতে হবে।');
-      for (const r of rows) {
-        if (!Number.isInteger(Number(r.question_number)) || Number(r.question_number) < 1) throw new Error('প্রতিটি অঙ্কে positive question_number লাগবে।');
-        if (!r.title || typeof r.solution_html !== 'string') throw new Error('প্রতিটি অঙ্কে title এবং solution_html থাকতে হবে।');
-      }
     } catch (err) { setError(`Import করা যায়নি: ${err.message}`); return; }
     setImportBusy(true);
     const payload = rows.map(r => ({
@@ -208,7 +256,6 @@ function App() {
 
   return (
     <div className="app-shell">
-      {/* টপবার / হেডার */}
       <header className="topbar">
         <div className="brand-mark">
           <img src="/logo.png" alt="PCA Logo" className="app-logo" onError={(e)=>{e.target.style.display='none';}} />
@@ -245,7 +292,7 @@ function App() {
           </button>)}
         </section>
 
-        {/* ১. অধ্যায় সিলেক্ট করা না থাকলে: অধ্যায়ের গ্রিড */}
+        {/* ১. অধ্যায় সিলেক্ট করা না থাকলে: সুন্দর চতুর্ভুজ আইকনসহ অধ্যায়ের গ্রিড */}
         {!activeChapter ? (
           <section className="chapter-selection-section">
             <div className="section-heading">
@@ -256,13 +303,28 @@ function App() {
               <p className="empty-note">এই শ্রেণির জন্য এখনো কোনো অধ্যায় যোগ করা হয়নি।</p>
             ) : (
               <div className="chapter-cards-grid">
-                {visibleChapters.map(c => (
-                  <button key={c.id} className="chapter-card-box" onClick={() => { setActiveChapter(c); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}>
-                    <span className="chapter-num">{String(c.sort_order).padStart(2,'0')}</span>
-                    <span className="chapter-card-title">{c.title}</span>
-                    <ChevronRight size={20} className="chapter-card-arrow"/>
-                  </button>
-                ))}
+                {visibleChapters.map((c, index) => {
+                  const cleanedTitle = cleanChapterTitle(c.title);
+                  const ordinal = getBengaliOrdinal(index);
+                  const ChapterIcon = getChapterIcon(c.title, subject);
+
+                  return (
+                    <button 
+                      key={c.id} 
+                      className="chapter-card-box" 
+                      onClick={() => { setActiveChapter(c); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}
+                    >
+                      <div className="chapter-icon-square">
+                        <ChapterIcon size={22} />
+                      </div>
+                      <div className="chapter-card-text">
+                        <span className="chapter-ordinal-badge">{ordinal} অধ্যায়</span>
+                        <span className="chapter-card-title">{cleanedTitle}</span>
+                      </div>
+                      <ChevronRight size={18} className="chapter-card-arrow"/>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -274,13 +336,13 @@ function App() {
             )}
           </section>
         ) : (
-          /* ২. অধ্যায় সিলেক্ট করলে: সমাধান পেজ */
+          /* ২. অধ্যায় সিলেক্ট করলে: সমাধান পেজ */
           <section className="chapter-detail-page">
             <div className="active-chapter-header">
               <button className="back-button" onClick={() => { setActiveChapter(null); setActiveTopic('all'); setSelectedSolution(null); setQuery(''); }}>
                 <ArrowLeft size={18}/> অধ্যায় তালিকায় ফিরুন
               </button>
-              <h2>{activeChapter.title}</h2>
+              <h2>{getBengaliOrdinal(visibleChapters.findIndex(c => c.id === activeChapter.id))} অধ্যায়: {cleanChapterTitle(activeChapter.title)}</h2>
             </div>
 
             {selectedSolution ? (
@@ -344,7 +406,6 @@ function App() {
   );
 }
 
-{/* লগইন স্ক্রিন - যেখানে ক্লাস নির্বাচন করার অপশন যুক্ত করা হয়েছে */}
 function LoginScreen({studentId,setStudentId,password,setPassword,selectedClass,setSelectedClass,login,error}) {
   return (
     <div className="login-page">
@@ -398,7 +459,7 @@ function LoginScreen({studentId,setStudentId,password,setPassword,selectedClass,
 }
 
 function SetupScreen() {
-  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1><p>ওয়েবসাইট চালু করতে প্রজেক্টের URL ও publishable/anon key সেট করতে হবে।</p></div></div>;
+  return <div className="setup-page"><div className="login-card setup-card"><div className="login-logo"><Database size={29}/></div><p className="eyebrow">INITIAL SETUP</p><h1>Supabase সংযোগ বাকি</h1></div></div>;
 }
 
 function SolutionView({solution,onBack,admin,onStatus}) {
