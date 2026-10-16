@@ -97,7 +97,9 @@ function App() {
     }
     if (!supabase) { setError('Supabase সেটআপ করা হয়নি। README.md অনুসরণ করে .env ফাইল পূরণ করো।'); return; }
     // Student IDs map to synthetic auth emails. Public sign-up must remain disabled.
-    const email = `${studentId}@students.pca.invalid`;
+const email = studentId === '2609000'
+  ? 'classroompca2@gmail.com'
+  : `${studentId}@students.pca.invalid`;
     const { error: e2 } = await supabase.auth.signInWithPassword({ email, password });
     if (e2) setError('আইডি বা পাসওয়ার্ড সঠিক নয়, অথবা অ্যাকাউন্ট সক্রিয় নয়।');
   }
