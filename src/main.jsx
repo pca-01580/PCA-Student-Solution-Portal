@@ -21,9 +21,9 @@ const SUBJECTS = ['Physics', 'Chemistry'];
 const bnSubject = (s) => s === 'Physics' ? 'ফিজিক্স' : 'কেমিস্ট্রি';
 
 const PROGRAM_LABELS = {
-  '9': 'ক্লাস ৯',
-  '10': 'ক্লাস ১০ / SSC',
-  'hsc': 'HSC (একাদশ-দ্বাদশ)',
+  '9': 'SSC',
+  '10': 'SSC',
+  'hsc': 'HSC',
   'admission': 'এডমিশন টেস্ট'
 };
 
@@ -38,16 +38,6 @@ function getBengaliOrdinal(index) {
   return BENGALI_ORDINALS[index] || `${index + 1}তম`;
 }
 
-// অধ্যায়ের নাম থেকে যেকোনো প্রকার অতিরিক্ত প্রিফিক্স মুছে ফেলার ফাংশন
-function cleanChapterTitle(title) {
-  if (!title) return '';
-  return title
-    .replace(/^(?:[\d১-৯0-9a-zA-Zমষতম্থ্রর্ডন্সষ্ঠম]+\s*)?অধ্যায়\s*[:ঃ.-]?\s*/i, '')
-    .replace(/^[০-৯0-9]+\s*[:ঃ.-]?\s*/i, '')
-    .replace(/^[মষ]\s*/i, '')
-    .replace(/^[:\sঃ.-]+/, '')
-    .trim();
-}
 
 function getChapterIcon(title = '', subject = '') {
   const t = title.toLowerCase();
@@ -431,7 +421,7 @@ function LoginScreen({studentId,setStudentId,password,setPassword,selectedClass,
     <div className="login-viewport">
       <div className="login-glass-card">
         <div className="login-brand-header">
-          <img src="/logo.png" alt="PCA Logo" className="login-brand-logo" onError={(e)=>{e.target.style.display='none';}} />
+          <img src="/logo.png" alt="logo" className="login-brand-logo" onError={(e)=>{e.target.style.display='none';}} />
           <Atom size={42} className="login-fallback-icon"/>
           <h1 className="chandrabati-login-title">ফিজিক্স & কেমিস্ট্রি <span className="english-with">with</span> আনন্দ</h1>
           <p className="portal-sub">STUDENT SOLUTION PORTAL</p>
@@ -439,12 +429,12 @@ function LoginScreen({studentId,setStudentId,password,setPassword,selectedClass,
 
         <form onSubmit={login} className="login-form-modern">
           <div className="form-group">
-            <label>শ্রেণি / কোর্স নির্বাচন করো</label>
+            <label>শ্রেণি</label>
             <select value={selectedClass} onChange={e=>setSelectedClass(e.target.value)} className="select-custom">
-              <option value="9">ক্লাস ৯ (Class 9)</option>
-              <option value="10">ক্লাস ১০ / SSC</option>
-              <option value="hsc">HSC (একাদশ-দ্বাদশ)</option>
-              <option value="admission">এডমিশন (Admission)</option>
+        
+              <option value="10">SSC</option>
+              <option value="hsc">HSC</option>
+              <option value="admission">এডমিশন</option>
             </select>
           </div>
 
